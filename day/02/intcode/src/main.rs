@@ -34,6 +34,7 @@ mod test {
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::convert::TryInto;
 
 fn execute(program: &mut [u32]) {
     let mut pc = 0;
@@ -68,12 +69,27 @@ fn main() {
     //let program = buf_reader.read_to_string().unwrap()
     //   .split(",");
 
-    let mut program : Vec<u32> = file.split(",").map(|x| x.parse::<u32>().unwrap()).collect();
+    let search = 19690720;
 
-    program[1] = 12;
-    program[2] = 2;
+    let original : Vec<u32> = file.split(",").map(|x| x.parse::<u32>().unwrap()).collect();
 
-    execute(&mut program);
-    
-    println!("program[0]={}", program[0]);
+
+    for noun in 0..original.len() {
+        for verb in 0..original.len() {
+            let mut program = original.clone();
+
+            
+            program[1] = noun.try_into().unwrap();
+            program[2] = verb.try_into().unwrap();
+
+            execute(&mut program);
+
+            let output = program[0];
+
+            if output == search {
+                println!("noun: {} verb: {} output: {}", noun, verb, output);
+                println!("result: {}", 100 * noun + verb);
+            }
+        }
+    }
 }
