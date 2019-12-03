@@ -36,28 +36,140 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::convert::TryInto;
 
+#[macro_use]
+extern crate num_derive;
+use num_traits::FromPrimitive;
+
+type Integer = u32;
+type Memory = [Integer];
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct Address(usize);
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct Value(Integer);
+
+#[derive(Debug, PartialEq)]
+enum Instruction {
+    Add { arg1: Address, arg2: Address, out: Address},
+    Mult { arg1: Address, arg2: Address, out: Address},
+    Terminate,
+}
+
+#[derive(FromPrimitive)]
+enum InstructionCode {
+    Add = 1,
+    Mult = 2,
+    Terminate = 99
+}
+
+#[derive(Debug)]
+struct InvalidInstructionInfo {
+    pub invalid_instruction: Value,
+    pub instruction_location: Address,
+}
+
+#[derive(Debug)]
+struct InvalidAddressInfo {
+    pub invalid_address: Address,
+    pub address_location: Address,
+}
+
+#[derive(Debug)]
+enum Error {
+    InvalidInstruction { instruction_value: Value, instruction_location: Address },
+    InvalidAddress { invalid_address: Address, address_location: Address },
+    AddressOutOfRange(Address),
+}
+
+struct Machine<'a> {
+    memory: &'a mut Memory,
+    ip: Address,
+}
+
+impl Machine<'_> {
+    fn pop_address(&mut self) -> Result<Address, Error> {
+        let a = self.read_address(self.ip)?;    
+        self.ip.0 += 1;
+        Ok(a)
+    }
+
+    fn pop_value(&mut self) -> Result<Value, Error> {
+        let v = Value(self.memory[self.ip.0]);
+        self.ip.0 += 1;
+        Ok(v)
+    }
+
+    fn pop_instruction_code(&mut self) -> Result<InstructionCode, Error> {
+        let numeric_value = self.memory[self.ip.0];
+        
+        match FromPrimitive::from_u64(numeric_value.try_into().unwrap()) {
+            Option::Some(x) => {
+                self.ip.0 += 1;
+                return Ok(x);
+            },
+            Option::None => return Err(Error::InvalidInstruction {
+                instruction_value: Value(numeric_value),
+                instruction_location: self.ip,
+            })
+        }
+    }
+
+    fn pop_instruction(&mut self) -> Result<Instruction, Error> {
+        match self.pop_instruction_code()? {
+            InstructionCode::Add => Ok(Instruction::Add{ arg1: self.pop_address()?, arg2: self.pop_address()?, out: self.pop_address()?}),
+            InstructionCode::Mult => Ok(Instruction::Mult{ arg1: self.pop_address()?, arg2: self.pop_address()?, out: self.pop_address()?}),
+            InstructionCode::Terminate => Ok(Instruction::Terminate),
+        }
+    }
+
+    fn read_value(&self, address: Address) -> Result<Value, Error> {
+        Ok(Value(self.memory[address.0]))
+    }
+
+    fn read_address(&self, address: Address) -> Result<Address, Error> {
+        let a = Address(self.memory[address.0].try_into().unwrap());
+        if a.0 < 0 || a.0 >= self.memory.len() {
+            return Err(Error::InvalidAddress {
+                invalid_address: a,
+                address_location: address,
+            })
+        }
+        Ok(a)
+    }
+
+    fn set_value(&mut self, address: Address, value: Value) -> Result<(), Error> {
+        self.memory[address.0] = value.0;
+        Ok(())
+    }
+
+    fn execute(&mut self, instruction: Instruction) -> Result<(), Error> {
+        match instruction {
+            Instruction::Add { arg1: i1, arg2: i2, out: o } => {
+                self.set_value(o, Value(self.read_value(i1)?.0 + self.read_value(i2)?.0))?;
+            },
+            Instruction::Mult { arg1: i1, arg2: i2, out: o } => {
+                self.set_value(o, Value(self.read_value(i1)?.0 * self.read_value(i2)?.0))?;
+            },
+            Instruction::Terminate => {
+                panic!("Terminate instruction can't be executed");
+            }
+        }
+        Ok(())
+    }
+}
+
+
 fn execute(program: &mut [u32]) {
-    let mut pc = 0;
+    let mut m = Machine { memory: program, ip: Address(0) };
 
     loop {
-        let opcode = program[pc];
-
-        if opcode == 99 {
+        let i = m.pop_instruction().unwrap();
+        println!("{:?}", i);
+        if (i == Instruction::Terminate) {
             break;
         }
-
-        let (idx1, idx2) = (program[pc + 1] as usize, program[pc + 2] as usize);
-                let outputidx = program[pc + 3] as usize;
-        match opcode {
-            1 => {
-                program[outputidx] = program[idx1] + program[idx2];       
-            }
-            2 => {
-                program[outputidx] = program[idx1] * program[idx2];
-            }
-            _ => { panic!("Unexpected opcode {}", opcode); }
-        }
-        pc += 4;
+        m.execute(i);
     }
 }
 
