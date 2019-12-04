@@ -144,25 +144,35 @@ impl Wire {
 }
 use std::collections::{HashSet, HashMap};
 
-
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
-struct WireCellState<'a> {
-    wire: &'a Wire,
-    steps: u32,
+struct ByRefKey<'a, T> {
+    obj: &'a T,
 }
 
-impl<'a> WireCellState<'a> {
-    fn new(wire: &'a Wire,
-    steps: u32) -> Self {
+impl<'a, T> ByRefKey<'a, T> {
+    fn new(obj: &'a T) -> Self {
         Self {
-            wire: wire,
-            steps: steps
+            obj: obj
         }
     }
 }
 
+impl<'a, T> PartialEq for ByRefKey<'a, T> {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.obj, other.obj)
+    }
+}
+impl<'a, T> Eq for ByRefKey<'a, T> { }
+
+use std::hash::{Hash, Hasher};
+
+impl<'a, T> Hash for ByRefKey<'a, T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        std::ptr::hash(self.obj, state);
+    }
+}
+
 struct GridCell<'a> {
-    wires: HashMap<&'a Wire, u32>
+    wires: HashMap<ByRefKey<'a, Wire>, u32>
 }
 
 impl<'a> GridCell<'a> {
@@ -236,7 +246,7 @@ impl<'a> Grid<'a> {
 
                 steps += 1;
 
-                cell.wires.insert(wire, steps);
+                cell.wires.insert(ByRefKey::new(wire), steps);
                 if cell.wires.len() > 1 {
                     self.intersections.insert(index);
                 }
