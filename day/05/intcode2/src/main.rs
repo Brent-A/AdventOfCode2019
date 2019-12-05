@@ -3,28 +3,28 @@ mod test {
     use super::*;
 
     #[test]
-    fn example1() {
+    fn d2_example1() {
         let mut program = [1,0,0,0,99];
         execute(&mut program);
         assert_eq!([2,0,0,0,99], program);
     }
 
     #[test]
-    fn example2() {
+    fn d2_example2() {
         let mut program = [2,3,0,3,99];
         execute(&mut program);
         assert_eq!([2,3,0,6,99], program);
     }
 
     #[test]
-    fn example3() {
+    fn d2_example3() {
         let mut program = [2,4,4,5,99,0];
         execute(&mut program);
         assert_eq!([2,4,4,5,99,9801], program);
     }
 
     #[test]
-    fn example4() {
+    fn d2_example4() {
         let mut program = [1,1,1,4,99,5,6,0,99];
         execute(&mut program);
         assert_eq!([30,1,1,4,2,5,6,0,99], program);
@@ -84,7 +84,7 @@ enum ParameterMode {
 enum Instruction {
     Add { arg1: Arg, arg2: Arg, out: Arg},
     Mult { arg1: Arg, arg2: Arg, out: Arg},
-    Input { arg1: Arg },
+    Input { out: Arg },
     Output { arg1: Arg },
     JumpIfTrue { cond: Arg, dest: Arg },
     JumpIfFalse { cond: Arg, dest: Arg },
@@ -172,7 +172,7 @@ impl Machine<'_> {
         match i {
             InstructionCode::Add => Ok(Instruction::Add{ arg1: self.pop_argument(a1)?, arg2: self.pop_argument(a2)?, out: self.pop_argument(a3)?}),
             InstructionCode::Mult => Ok(Instruction::Mult{ arg1: self.pop_argument(a1)?, arg2: self.pop_argument(a2)?, out: self.pop_argument(a3)?}),
-            InstructionCode::Input => Ok(Instruction::Input{ arg1: self.pop_argument(a1)? }),
+            InstructionCode::Input => Ok(Instruction::Input{ out: self.pop_argument(a1)? }),
             InstructionCode::Output => Ok(Instruction::Output{ arg1: self.pop_argument(a1)? }),
             InstructionCode::JumpIfTrue => Ok(Instruction::JumpIfTrue{ cond: self.pop_argument(a1)?, dest: self.pop_argument(a2)? }),
             InstructionCode::JumpIfFalse => Ok(Instruction::JumpIfFalse{ cond: self.pop_argument(a1)?, dest: self.pop_argument(a2)? }),
@@ -218,28 +218,30 @@ impl Machine<'_> {
         Ok(())
     }
 
-    fn execute(&mut self, instruction: Instruction) -> Result<(), Error> {
+    fn execute(&mut self, instruction: Instruction) -> Result<Option<Value>, Error> {
         match instruction {
-            Instruction::Add { arg1: i1, arg2: i2, out: o } => {
-                self.set_value(o, Value(self.read_value(i1)?.0 + self.read_value(i2)?.0))?;
+            Instruction::Add { arg1, arg2, out } => {
+                self.set_value(out, Value(self.read_value(arg1)?.0 + self.read_value(arg2)?.0))?;
             },
-            Instruction::Mult { arg1: i1, arg2: i2, out: o } => {
-                self.set_value(o, Value(self.read_value(i1)?.0 * self.read_value(i2)?.0))?;
+            Instruction::Mult { arg1, arg2, out } => {
+                self.set_value(out, Value(self.read_value(arg1)?.0 * self.read_value(arg2)?.0))?;
             },
-            Instruction::Input { arg1: o} => {
-                self.set_value(o, Value(5))?;
+            Instruction::Input { out } => {
+                self.set_value(out, Value(5))?;
             },
-            Instruction::Output { arg1: i1 } => {
-                println!("OUTPUT: {:?}", self.read_value(i1)?);
+            Instruction::Output { arg1 } => {
+                let v = self.read_value(arg1)?;
+                println!("OUTPUT: {:?}", v);
+                return Ok(Option::Some(v));
             },
-            Instruction::JumpIfTrue { cond: c, dest: d } => {
-                if self.read_value(c)?.0 != 0 {
-                    self.ip.0 = self.read_value(d)?.0.try_into().unwrap();
+            Instruction::JumpIfTrue { cond, dest } => {
+                if self.read_value(cond)?.0 != 0 {
+                    self.ip.0 = self.read_value(dest)?.0.try_into().unwrap();
                 }
             },
-            Instruction::JumpIfFalse { cond: c, dest: d } => {
-                if self.read_value(c)?.0 == 0 {
-                    self.ip.0 = self.read_value(d)?.0.try_into().unwrap();
+            Instruction::JumpIfFalse { cond, dest } => {
+                if self.read_value(cond)?.0 == 0 {
+                    self.ip.0 = self.read_value(dest)?.0.try_into().unwrap();
                 }
             },
             Instruction::LessThan { c1, c2, out } => {
@@ -250,24 +252,26 @@ impl Machine<'_> {
                     self.set_value(out, Value(0))?;
                 }
             },
-            Instruction::Equals { c1: c1, c2: c2, out: o } => {
+            Instruction::Equals { c1, c2, out } => {
                 if self.read_value(c1)?.0  == self.read_value(c2)?.0  {
-                    self.set_value(o, Value(1))?;
+                    self.set_value(out, Value(1))?;
                 }
                 else {
-                    self.set_value(o, Value(0))?;
+                    self.set_value(out, Value(0))?;
                 }
             },
             Instruction::Terminate => {
                 panic!("Terminate instruction can't be executed");
             }
         }
-        Ok(())
+        Ok(Option::None)
     }
 }
 
-fn execute(program: &mut [i32]) {
+fn execute(program: &mut [i32]) -> Vec<Value> {
     let mut m = Machine { memory: program, ip: Address(0) };
+
+    let mut output : Vec<Value> = Vec::new();
 
     loop {
         let i = m.pop_instruction().unwrap();
@@ -275,8 +279,13 @@ fn execute(program: &mut [i32]) {
         if i == Instruction::Terminate {
             break;
         }
-        m.execute(i).unwrap();
+        let o = m.execute(i).unwrap();
+        if let Option::Some(v) = o {
+            output.push(v);
+        }
     }
+
+    output
 }
 
 fn main() {
@@ -287,5 +296,7 @@ fn main() {
     
     let mut program = original.clone();
 
-    execute(&mut program);
+    let output = execute(&mut program);
+
+    println!("Output is: {:?}", output);
 }
