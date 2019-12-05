@@ -186,7 +186,7 @@ enum InstructionCode {
     Terminate = 99,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum Error {
     InvalidInstruction {
         instruction_value: Value,
@@ -232,33 +232,21 @@ impl Machine<'_> {
 
         let numeric_opcode = digits[5];
 
-        match FromPrimitive::from_u64(numeric_opcode.try_into().unwrap()) {
-            Option::Some(x) => {
-                self.ip.0 += 1;
+        let e = Error::InvalidInstruction {
+            instruction_value: Value(numeric_value),
+            instruction_location: self.ip,
+        };
 
-                return Ok((
-                    FromPrimitive::from_u32(digits[2]).ok_or(Error::InvalidInstruction {
-                        instruction_value: Value(numeric_value),
-                        instruction_location: self.ip,
-                    })?,
-                    FromPrimitive::from_u32(digits[3]).ok_or(Error::InvalidInstruction {
-                        instruction_value: Value(numeric_value),
-                        instruction_location: self.ip,
-                    })?,
-                    FromPrimitive::from_u32(digits[4]).ok_or(Error::InvalidInstruction {
-                        instruction_value: Value(numeric_value),
-                        instruction_location: self.ip,
-                    })?,
-                    x,
-                ));
-            }
-            Option::None => {
-                return Err(Error::InvalidInstruction {
-                    instruction_value: Value(numeric_value),
-                    instruction_location: self.ip,
-                })
-            }
-        }
+        let x = FromPrimitive::from_u64(numeric_opcode.try_into().unwrap()).ok_or(e)?;
+
+        self.ip.0 += 1;
+
+        return Ok((
+            FromPrimitive::from_u32(digits[2]).ok_or(e)?,
+            FromPrimitive::from_u32(digits[3]).ok_or(e)?,
+            FromPrimitive::from_u32(digits[4]).ok_or(e)?,
+            x,
+        ));
     }
 
     fn pop_instruction(&mut self) -> Result<Instruction, Error> {
