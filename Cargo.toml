@@ -3,6 +3,7 @@ members = [
   "day/01/FuelCounterUpper",
   "day/02/intcode",
   "day/03/WireCross",
-  "day/04/SecureContainer"
+  "day/04/SecureContainer",
+  "day/05/intcode2"
 ]
 
