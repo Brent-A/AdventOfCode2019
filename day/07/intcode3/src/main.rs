@@ -31,94 +31,139 @@ mod test {
     }
 
     #[test]
-    fn d5_example1() -> Result<(), ExecutionError> {
+    fn d5_example1() -> Result<(), Error> {
         // 3,9,8,9,10,9,4,9,99,-1,8 - Using position mode,
         // consider whether the input is equal to 8;
         // output 1 (if it is) or 0 (if it is not).
         let mut program = [3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8];
-        assert_eq!(Value(1), execute(&mut program, &[Value(8)])?[0]);
+        assert_eq!(Value(1), execute(&mut program, &[Value(8)])?.unwrap());
         let mut program = [3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8];
-        assert_eq!(Value(0), execute(&mut program, &[Value(10)])?[0]);
+        assert_eq!(Value(0), execute(&mut program, &[Value(10)])?.unwrap());
         Ok(())
     }
 
     #[test]
-    fn d5_example2() -> Result<(), ExecutionError> {
+    fn d5_example2() -> Result<(), Error> {
         // 3,9,7,9,10,9,4,9,99,-1,8 - Using position mode,
         // consider whether the input is less than 8;
         // output 1 (if it is) or 0 (if it is not).
         let program = [3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8];
 
-        assert_eq!(Value(1), execute(&mut program.clone(), &[Value(7)])?[0]);
-        assert_eq!(Value(0), execute(&mut program.clone(), &[Value(8)])?[0]);
-        assert_eq!(Value(0), execute(&mut program.clone(), &[Value(10)])?[0]);
+        assert_eq!(
+            Value(1),
+            execute(&mut program.clone(), &[Value(7)])?.unwrap()
+        );
+        assert_eq!(
+            Value(0),
+            execute(&mut program.clone(), &[Value(8)])?.unwrap()
+        );
+        assert_eq!(
+            Value(0),
+            execute(&mut program.clone(), &[Value(10)])?.unwrap()
+        );
         Ok(())
     }
 
     #[test]
-    fn d5_example3() -> Result<(), ExecutionError> {
+    fn d5_example3() -> Result<(), Error> {
         // 3,3,1108,-1,8,3,4,3,99 - Using immediate mode,
         // consider whether the input is equal to 8;
         // output 1 (if it is) or 0 (if it is not).
         let program = [3, 3, 1108, -1, 8, 3, 4, 3, 99];
 
-        assert_eq!(Value(1), execute(&mut program.clone(), &[Value(8)])?[0]);
-        assert_eq!(Value(0), execute(&mut program.clone(), &[Value(0)])?[0]);
+        assert_eq!(
+            Value(1),
+            execute(&mut program.clone(), &[Value(8)])?.unwrap()
+        );
+        assert_eq!(
+            Value(0),
+            execute(&mut program.clone(), &[Value(0)])?.unwrap()
+        );
         Ok(())
     }
 
     #[test]
-    fn d5_example4() -> Result<(), ExecutionError> {
+    fn d5_example4() -> Result<(), Error> {
         // 3,3,1107,-1,8,3,4,3,99 - Using immediate mode,
         // consider whether the input is less than 8;
         // output 1 (if it is) or 0 (if it is not).
         let program = [3, 3, 1107, -1, 8, 3, 4, 3, 99];
 
-        assert_eq!(Value(1), execute(&mut program.clone(), &[Value(7)])?[0]);
-        assert_eq!(Value(0), execute(&mut program.clone(), &[Value(8)])?[0]);
-        assert_eq!(Value(0), execute(&mut program.clone(), &[Value(10)])?[0]);
+        assert_eq!(
+            Value(1),
+            execute(&mut program.clone(), &[Value(7)])?.unwrap()
+        );
+        assert_eq!(
+            Value(0),
+            execute(&mut program.clone(), &[Value(8)])?.unwrap()
+        );
+        assert_eq!(
+            Value(0),
+            execute(&mut program.clone(), &[Value(10)])?.unwrap()
+        );
         Ok(())
     }
 
     #[test]
-    fn d5_jump() -> Result<(), ExecutionError> {
+    fn d5_jump() -> Result<(), Error> {
         // Here are some jump tests that take an input, then output 0 if the input was zero or 1 if the input was non-zero:
         // 3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9 (using position mode)
         // 3,3,1105,-1,9,1101,0,0,12,4,12,99,1 (using immediate mode)
 
         let program = [3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, -1, 0, 1, 9];
 
-        assert_eq!(Value(0), execute(&mut program.clone(), &[Value(0)])?[0]);
-        assert_eq!(Value(1), execute(&mut program.clone(), &[Value(1)])?[0]);
+        assert_eq!(
+            Value(0),
+            execute(&mut program.clone(), &[Value(0)])?.unwrap()
+        );
+        assert_eq!(
+            Value(1),
+            execute(&mut program.clone(), &[Value(1)])?.unwrap()
+        );
 
         let program = [3, 3, 1105, -1, 9, 1101, 0, 0, 12, 4, 12, 99, 1];
 
-        assert_eq!(Value(0), execute(&mut program.clone(), &[Value(0)])?[0]);
-        assert_eq!(Value(1), execute(&mut program.clone(), &[Value(1)])?[0]);
+        assert_eq!(
+            Value(0),
+            execute(&mut program.clone(), &[Value(0)])?.unwrap()
+        );
+        assert_eq!(
+            Value(1),
+            execute(&mut program.clone(), &[Value(1)])?.unwrap()
+        );
         Ok(())
     }
 
     #[test]
-    fn d5_larger() -> Result<(), ExecutionError> {
+    fn d5_larger() -> Result<(), Error> {
         let program = [
             3, 21, 1008, 21, 8, 20, 1005, 20, 22, 107, 8, 21, 20, 1006, 20, 31, 1106, 0, 36, 98, 0,
             0, 1002, 21, 125, 20, 4, 20, 1105, 1, 46, 104, 999, 1105, 1, 46, 1101, 1000, 1, 20, 4,
             20, 1105, 1, 46, 98, 99,
         ];
 
-        assert_eq!(Value(999), execute(&mut program.clone(), &[Value(5)])?[0]);
-        assert_eq!(Value(1000), execute(&mut program.clone(), &[Value(8)])?[0]);
-        assert_eq!(Value(1001), execute(&mut program.clone(), &[Value(10)])?[0]);
+        assert_eq!(
+            Value(999),
+            execute(&mut program.clone(), &[Value(5)])?.unwrap()
+        );
+        assert_eq!(
+            Value(1000),
+            execute(&mut program.clone(), &[Value(8)])?.unwrap()
+        );
+        assert_eq!(
+            Value(1001),
+            execute(&mut program.clone(), &[Value(10)])?.unwrap()
+        );
         Ok(())
     }
 
+    /*
     #[test]
     fn amp1() {
-
         //15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0
 
         let program = [
-        3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0
+            3, 15, 3, 16, 1002, 16, 10, 16, 1, 16, 15, 15, 4, 15, 99, 0, 0,
         ];
 
         let (combo, result) = max_thrust_calc(&program);
@@ -126,6 +171,19 @@ mod test {
         println!("combo: {:?}", combo);
         //assert_eq!(combo, (4,3,2,1,0));
         assert_eq!(result, Value(43210))
+    }
+    */
+
+    #[test]
+    fn amp2() {
+        let program = [3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,
+        27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5];
+
+        let (combo, result) = max_thrust_feedback_calc(&program);
+        
+        println!("combo: {:?}", combo);
+        //assert_eq!(combo, (4,3,2,1,0));
+        assert_eq!(result, Value(139629729))
     }
 }
 
@@ -214,12 +272,36 @@ enum Error {
     },
 }
 
-struct Machine<'a> {
-    memory: &'a mut Memory,
-    ip: Address,
+#[derive(Debug)]
+enum MachineState {
+    DecodeInstruction,
+    ExecuteInstruction(Instruction),
+    WaitingForInput(Instruction),
+    Terminated,
 }
 
-impl Machine<'_> {
+struct Machine {
+    memory: Vec<i32>,
+    ip: Address,
+    state: MachineState,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+enum RunResult {
+    NeedInput,
+    Output(Value),
+    Done,
+}
+
+impl Machine {
+    fn new(program: &[i32]) -> Self {
+        Self {
+            memory: program.to_vec(),
+            ip: Address(0),
+            state: MachineState::DecodeInstruction,
+        }
+    }
+
     fn pop_address(&mut self) -> Result<Address, Error> {
         let a = self.read_address(self.ip)?;
         self.ip.0 += 1;
@@ -337,10 +419,11 @@ impl Machine<'_> {
         Ok(())
     }
 
-    fn execute<F>(&mut self, instruction: Instruction, input: F) -> Result<Option<Value>, Error>
-    where
-        F: FnOnce() -> Value,
-    {
+    fn execute(
+        &mut self,
+        instruction: Instruction,
+        input: Option<Value>,
+    ) -> Result<Option<Value>, Error> {
         match instruction {
             Instruction::Add { arg1, arg2, out } => {
                 self.set_value(
@@ -355,7 +438,7 @@ impl Machine<'_> {
                 )?;
             }
             Instruction::Input { out } => {
-                self.set_value(out, input())?;
+                self.set_value(out, input.unwrap())?;
             }
             Instruction::Output { arg1 } => {
                 let v = self.read_value(arg1)?;
@@ -390,6 +473,44 @@ impl Machine<'_> {
             }
         }
         Ok(Option::None)
+    }
+
+    fn run(&mut self, input: Option<Value>) -> Result<RunResult, Error> {
+        loop {
+            //println!("{:p} {:?}", self, self.state);
+            match self.state {
+                MachineState::DecodeInstruction => {
+                    self.state = MachineState::ExecuteInstruction(self.pop_instruction()?);
+                    continue;
+                }
+                MachineState::ExecuteInstruction(i) => match i {
+                    Instruction::Terminate => {
+                        self.state = MachineState::Terminated;
+                        return Ok(RunResult::Done);
+                    }
+                    Instruction::Input { out: _ } => {
+                        self.state = MachineState::WaitingForInput(i);
+                        return Ok(RunResult::NeedInput);
+                    }
+                    _ => {
+                        self.state = MachineState::DecodeInstruction;
+                        if let Some(output) = self.execute(i, Option::None)? {
+                            return Ok(RunResult::Output(output));
+                        } else {
+                            continue;
+                        }
+                    }
+                },
+                MachineState::WaitingForInput(i) => {
+                    self.state = MachineState::DecodeInstruction;
+                    self.execute(i, input)?;
+                    continue;
+                }
+                MachineState::Terminated => {
+                    panic!("Executing terminated machine");
+                }
+            }
+        }
     }
 }
 
@@ -458,53 +579,41 @@ impl std::fmt::Debug for ExecutionError {
     }
 }
 
-fn execute(program: &mut [i32], input: &[Value]) -> Result<Option<Value>, ExecutionError> {
-    let mut m = Machine {
-        memory: program,
-        ip: Address(0),
-    };
+fn execute(program: &mut [i32], input: &[Value]) -> Result<Option<Value>, Error> {
+    let mut m = Machine::new(program);
 
     let mut input_index = 0;
 
-    let mut trace = Vec::new();
 
+    let mut s = m.run(Option::None)?;
     loop {
-        let ip = m.ip;
-        let i = m
-            .pop_instruction()
-            .map_err(|e| ExecutionError::InstructionDecode {
-                inner: e,
-                trace: trace.clone(),
-            })?;
-
-        trace.push((ip, i));
-        if i == Instruction::Terminate {
-            break;
-        }
-        if let Some(o) = m
-            .execute(i, || {
-                let v = input[input_index];
-                input_index += 1;
-                v
-            })
-            .map_err(|e| ExecutionError::InstructionExecute {
-                inner: e,
-                trace: trace.clone(),
-            })?
-        {
-            return Ok(Some(o));
+        match s {
+            RunResult::NeedInput => {
+                s = m.run(Some(input[input_index]))?;
+            },
+            RunResult::Output(v) => {
+                
+    program.copy_from_slice(&m.memory);
+                return Ok(Some(v));
+            },
+            RunResult::Done => {
+                
+    program.copy_from_slice(&m.memory);
+                return Ok(None);
+            }
         }
     }
 
+    program.copy_from_slice(&m.memory);
+     
     Ok(None)
 }
 
 fn max_thrust_calc(input: &[i32]) -> ([i32; 5], Value) {
+    let mut max: Option<([i32; 5], Value)> = Option::None;
 
-    let mut max : Option<([i32; 5], Value)>= Option::None;
+    let mut program: Vec<i32> = input.to_vec();
 
-    let mut program : Vec<i32> = input.to_vec();
-    
     program.clone_from_slice(input);
     let program = program;
 
@@ -513,22 +622,21 @@ fn max_thrust_calc(input: &[i32]) -> ([i32; 5], Value) {
             for s2 in 0..5 {
                 for s3 in 0..5 {
                     for s4 in 0..5 {
-                        
-                        if s0 == s1 ||
-                           s0 == s2 ||
-                           s0 == s3 ||
-                           s0 == s4 ||
-                           s1 == s2 || 
-                           s1 == s3 ||
-                           s1 == s4 ||
-                           s2 == s3 ||
-                           s2 == s3 ||
-                           s2 == s4 ||
-                           s3 == s4 {
-                               continue;
-                           }
+                        if s0 == s1
+                            || s0 == s2
+                            || s0 == s3
+                            || s0 == s4
+                            || s1 == s2
+                            || s1 == s3
+                            || s1 == s4
+                            || s2 == s3
+                            || s2 == s3
+                            || s2 == s4
+                            || s3 == s4
+                        {
+                            continue;
+                        }
 
-                           
                         let o0 = execute(&mut program.clone(), &[Value(s0), Value(0)]).unwrap();
                         let o1 = execute(&mut program.clone(), &[Value(s1), o0.unwrap()]).unwrap();
                         let o2 = execute(&mut program.clone(), &[Value(s2), o1.unwrap()]).unwrap();
@@ -540,7 +648,7 @@ fn max_thrust_calc(input: &[i32]) -> ([i32; 5], Value) {
                         if max == Option::None {
                             max = Some((combo, o4.unwrap()));
                         } else if let Some((c, m)) = max {
-                            if o4.0.unwrap > m.0 {
+                            if o4.unwrap().0 > m.0 {
                                 max = Some((combo, o4.unwrap()));
                             }
                         }
@@ -553,48 +661,133 @@ fn max_thrust_calc(input: &[i32]) -> ([i32; 5], Value) {
     max.unwrap()
 }
 
-
 fn max_thrust_feedback_calc(input: &[i32]) -> ([i32; 5], Value) {
+    let mut max: Option<([i32; 5], Value)> = Option::None;
 
-    let mut max : Option<([i32; 5], Value)>= Option::None;
+    let mut program: Vec<i32> = input.to_vec();
 
-    let mut program : Vec<i32> = input.to_vec();
-    
     program.clone_from_slice(input);
     let program = program;
 
-    for s0 in 5..9 {
-        for s1 in 5..9 {
-            for s2 in 5..9 {
-                for s3 in 5..9 {
-                    for s4 in 5..9 {
-                        
-                        if s0 == s1 ||
-                           s0 == s2 ||
-                           s0 == s3 ||
-                           s0 == s4 ||
-                           s1 == s2 || 
-                           s1 == s3 ||
-                           s1 == s4 ||
-                           s2 == s3 ||
-                           s2 == s3 ||
-                           s2 == s4 ||
-                           s3 == s4 {
-                               continue;
-                           }
-                        let o0 = execute(&mut program.clone(), &[Value(s0), Value(0)]).unwrap()[0];
-                        let o1 = execute(&mut program.clone(), &[Value(s1), o0]).unwrap()[0];
-                        let o2 = execute(&mut program.clone(), &[Value(s2), o1]).unwrap()[0];
-                        let o3 = execute(&mut program.clone(), &[Value(s3), o2]).unwrap()[0];
-                        let o4 = execute(&mut program.clone(), &[Value(s4), o3]).unwrap()[0];
+    println!("thrustcalc");
 
+    for s0 in 5..10 {
+        for s1 in 5..10 {
+            for s2 in 5..10 {
+                for s3 in 5..10 {
+                    for s4 in 5..10 {
+                        
+
+                        if     s0 == s1
+                            || s0 == s2
+                            || s0 == s3
+                            || s0 == s4
+                            || s1 == s2
+                            || s1 == s3
+                            || s1 == s4
+                            || s2 == s3
+                            || s2 == s4
+                            || s3 == s4
+                        {
+                            continue;
+                        }
+
+                        //if s0 != 9 || s1 != 8 || s2 != 7 || s3 != 6 || s4 != 5 {
+                        //    continue;
+                        //}
                         let combo = [s0, s1, s2, s3, s4];
+                        println!("trying: {:?}", combo);
+
+
+                        let mut programs: Vec<Vec<i32>> = Vec::new();
+                        for _ in 0..5 {
+                            programs.push(program.clone());
+                        }
+                        let mut machines: Vec<Machine> = Vec::new();
+                        for i in 0..5 {
+                            machines.push(Machine::new(&mut programs[i]));
+                        }
+
+                        let mut runstates = [RunResult::Done, 
+                        RunResult::Done, 
+                        RunResult::Done, 
+                        RunResult::Done, 
+                        RunResult::Done ];
+
+                        
+
+                        let mut outputs : [Option<Value>; 5] = [None, None, None, None, Some(Value(0))];
+                        
+                        // Give each machine their setting input
+                        
+                        
+                        //println!("I {:?} {:?}",  runstates, outputs);
+
+                        for i in 0..5 {
+                            runstates[i] = machines[i].run(Option::None).unwrap();
+                            assert_eq!(runstates[i], RunResult::NeedInput);
+                            //println!("I2 {:?} {:?}",  runstates, outputs);
+                            runstates[i] = machines[i].run(Some(Value(combo[i]))).unwrap();
+                            //assert_eq!(runstates[i], RunResult::NeedInput);
+                        }
+
+           
+                        //println!("R {:?} {:?}",  runstates, outputs);
+
+
+                        let mut outvalue = Value(0);
+                        // execute feedback loop
+                        loop {
+
+                            let mut executed = false;
+                            for i in 0..5 {
+                                //let next = (i + 1) % 5;
+                                let prev;
+                                if i == 0 {
+                                    prev = 4;
+                                }
+                                else {
+                                    prev = i - 1;
+                                }
+
+                                match runstates[i] {
+                                    RunResult::Output(value) => {
+                                        //println!("M({}) output {:?} {:?} {:?}", i, value, runstates, outputs);
+                                        outputs[i] = Some(value);
+                                        if i == 4 {
+                                            outvalue = value; 
+                                        }
+                                        runstates[i] = machines[i].run(Option::None).unwrap();
+                                        executed = true;
+                                    },
+                                    RunResult::NeedInput => {
+                                        if let Some(value) = outputs[prev] {
+                                            //println!("M({}) input {:?} {:?} {:?}", i, value, runstates, outputs);
+                                            runstates[i] = machines[i].run(Some(value)).unwrap();
+                                            outputs[prev] = None;
+                                            executed = true;
+                                        }
+                                    },
+                                    RunResult::Done => {
+                                        //println!("M({}) done", i);
+                                    }
+                                }
+                            }
+
+                            if !executed {
+                                break;
+                            }
+                        }
+
+                        
+                        //println!("F {:?} {:?}",  runstates, outputs);
+
 
                         if max == Option::None {
-                            max = Some((combo, o4));
+                            max = Some((combo, outvalue));
                         } else if let Some((c, m)) = max {
-                            if o4.0 > m.0 {
-                                max = Some((combo, o4));
+                            if outvalue.0 > m.0 {
+                                max = Some((combo, outvalue));
                             }
                         }
                     }
@@ -606,7 +799,6 @@ fn max_thrust_feedback_calc(input: &[i32]) -> ([i32; 5], Value) {
     max.unwrap()
 }
 
-
 fn main() {
     let file = std::fs::read_to_string("input.txt").unwrap();
 
@@ -614,6 +806,6 @@ fn main() {
 
     let mut program = original.clone();
 
-    let output = max_thrust_calc(&mut program);
+    let output = max_thrust_feedback_calc(&mut program);
     println!("Output is: {:?}", output);
 }
