@@ -62,13 +62,16 @@ mod test {
     }
 }
 
+#[derive(Clone, Debug)]
 struct Mass {
     name: String,
-    orbits: String,
+    parent_orbit: String,
+    child_orbits: Vec<String>,
 }
 
 use std::collections::HashMap;
 
+#[derive(Clone, Debug)]
 struct OrbitMap {
     masses: HashMap<String, Mass>
 }
@@ -80,7 +83,8 @@ impl OrbitMap {
             let parts: Vec<&str> = line.trim().split(")").collect();
             let mass = Mass {
                 name: parts[1].to_string(),
-                orbits: parts[0].to_string(),
+                parent_orbit: parts[0].to_string(),
+                child_orbits: Vec::new(),
             };
 
             if map.contains_key(&mass.name) {
@@ -88,7 +92,18 @@ impl OrbitMap {
             }
 
             map.insert(mass.name.clone(), mass);
+        }
 
+        let keys : Vec<String> = map.keys().map(|x| x.to_string()).collect();
+
+        for mass_name in keys {
+
+            let parent_orbit = map.get(&mass_name).unwrap().parent_orbit.clone();
+
+            if parent_orbit != "COM" {
+                let parent_mass = map.get_mut(&parent_orbit).unwrap();
+                parent_mass.child_orbits.push(mass_name.clone());
+            }
         }
 
         OrbitMap {
@@ -100,7 +115,7 @@ impl OrbitMap {
 
         match self.masses.get(mass) {
             Option::Some(m) => {
-                return self.total_orbits(&m.orbits) + 1;
+                return self.total_orbits(&m.parent_orbit) + 1;
             },
             Option::None => {
                 return 0;
@@ -114,7 +129,7 @@ impl OrbitMap {
             Option::Some(m) => {
                 //path.push(m.name.clone());
                 path.insert(0, m.name.clone());
-                self.path(&m.orbits, path);
+                self.path(&m.parent_orbit, path);
             },
             Option::None => {
                 return;
@@ -153,10 +168,11 @@ fn main() {
         orbits += map.total_orbits(m);
     }
 
+    let transfers = map.distance(&"YOU", &"SAN");
     println!("orbits: {}", orbits);
+    println!("transfers: {}", transfers);
 
-
-    
-    println!("transfers: {}", map.distance(&"YOU", &"SAN"));
+    assert_eq!(transfers, 370);
+    assert_eq!(orbits, 333679);
 
 }
