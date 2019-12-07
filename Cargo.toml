@@ -5,6 +5,7 @@ members = [
   "day/03/WireCross",
   "day/04/SecureContainer",
   "day/05/intcode2",
-  "day/06/OrbitMap"
+  "day/06/OrbitMap",
+  "day/07/intcode3",
 ]
 
