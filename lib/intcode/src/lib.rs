@@ -109,7 +109,7 @@ pub struct Machine {
     input_tx: Sender<Value>,
     input: Receiver<Value>,
     output: Sender<Value>,
-    output_rx: Receiver<Value>,
+    output_rx: Option<Receiver<Value>>,
     block_for_input: bool,
 }
 
@@ -126,7 +126,7 @@ impl Machine {
             output: tx1,
             block_for_input: false,
             input_tx: tx0,
-            output_rx: rx1,
+            output_rx: Some(rx1),
         }
     }
 
@@ -134,8 +134,12 @@ impl Machine {
         &self.input_tx
     }
 
-    pub fn output(&mut self) -> &Receiver<Value> {
-        &self.output_rx
+    pub fn output(&mut self) -> &mut Option<Receiver<Value>> {
+        &mut self.output_rx
+    }
+
+    pub fn memory(&self) -> &Memory {
+        &self.memory
     }
 
     fn pop_address(&mut self) -> Result<Address, Error> {

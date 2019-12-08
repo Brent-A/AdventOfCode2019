@@ -42,7 +42,7 @@ fn feedback_calc(input: &Memory, combo: &[i32;5]) -> Value {
 
             let next = (i + 1) % 5;
             let next_input = machines[next].input().clone();
-            for v in machines[i].output().try_iter() {
+            for v in machines[i].output().as_ref().unwrap().try_iter() {
                 if i == 4 {
                     outvalue = v;
                 }
