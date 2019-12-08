@@ -106,16 +106,18 @@ pub struct Machine {
     memory: Vec<i32>,
     ip: Address,
     state: MachineState,
+    input_tx: Sender<Value>,
     input: Receiver<Value>,
     output: Sender<Value>,
+    output_rx: Receiver<Value>,
     block_for_input: bool,
 }
 
 impl Machine {
 
-    pub fn new_noio(program: &Memory) -> Self {
-        let (_, rx0) = channel();
-        let (tx1, _) = channel();
+    pub fn new(program: &Memory) -> Self {
+        let (tx0, rx0) = channel();
+        let (tx1, rx1) = channel();
         Self {
             memory: program.to_vec(),
             ip: Address(0),
@@ -123,18 +125,17 @@ impl Machine {
             input: rx0,
             output: tx1,
             block_for_input: false,
+            input_tx: tx0,
+            output_rx: rx1,
         }
     }
-    
-    pub fn new(program: &Memory, input: Receiver<Value>, output: Sender<Value>) -> Self {
-        Self {
-            memory: program.to_vec(),
-            ip: Address(0),
-            state: MachineState::DecodeInstruction,
-            input: input,
-            output: output,
-            block_for_input: false,
-        }
+
+    pub fn input(&self) -> &Sender<Value> {
+        &self.input_tx
+    }
+
+    pub fn output(&mut self) -> &Receiver<Value> {
+        &self.output_rx
     }
 
     fn pop_address(&mut self) -> Result<Address, Error> {
@@ -328,7 +329,7 @@ impl Machine {
 
     pub fn run(&mut self) -> Result<(), Error> {
         loop {
-            println!("{:p} {:?}", self, self.state);
+            // println!("{:p} {:?} {:?}", self, self.ip, self.state);
             match self.state {
                 MachineState::DecodeInstruction => {
                     self.state = MachineState::ExecuteInstruction(self.pop_instruction()?);

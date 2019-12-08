@@ -2,33 +2,22 @@ use intcode::*;
 
 fn feedback_calc(input: &Memory, combo: &[i32;5]) -> Value {
 
-    let (tx0, rx0) = std::sync::mpsc::channel(); // 0 -> 1
-    let (tx1, rx1) = std::sync::mpsc::channel(); // 1 -> 2
-    let (tx2, rx2) = std::sync::mpsc::channel(); // 2 -> 3
-    let (tx3, rx3) = std::sync::mpsc::channel(); // 3 -> 4
-    let (tx4, rx4) = std::sync::mpsc::channel(); // 4 -> output
-
-    let (tx, rx) = std::sync::mpsc::channel();   // output -> 0
-
-    // Inputs to each machine
-    let inputs = [tx.clone(), tx0.clone(), tx1.clone(), tx2.clone(), tx3.clone()];
-
     let mut machines: Vec<Machine> = Vec::new();
 
-    machines.push(Machine::new(input, rx, tx0.clone()));
-    machines.push(Machine::new(input, rx0, tx1.clone()));
-    machines.push(Machine::new(input, rx1, tx2.clone()));
-    machines.push(Machine::new(input, rx2, tx3.clone()));
-    machines.push(Machine::new(input, rx3, tx4.clone()));
+    machines.push(Machine::new(input));
+    machines.push(Machine::new(input));
+    machines.push(Machine::new(input));
+    machines.push(Machine::new(input));
+    machines.push(Machine::new(input));
     
     // Give each machine their setting input
 
     for i in 0..5 {
-        inputs[i].send(Value(combo[i])).unwrap();
+        machines[i].input().send(Value(combo[i])).unwrap();
     }
 
     //Kick off the initial input
-    tx.send(Value(0)).unwrap();
+    machines[0].input().send(Value(0)).unwrap();
     
     let mut outvalue = Value(0);
 
@@ -50,14 +39,16 @@ fn feedback_calc(input: &Memory, combo: &[i32;5]) -> Value {
                     panic!("Machine {} error {:?}", i, e);
                 }
             }
+
+            let next = (i + 1) % 5;
+            let next_input = machines[next].input().clone();
+            for v in machines[i].output().try_iter() {
+                if i == 4 {
+                    outvalue = v;
+                }
+                next_input.send(v).unwrap();
+            }
         }
-
-        for v in rx4.try_iter() {
-            tx.send(v).unwrap();
-            outvalue = v;
-        }
-
-
 
         if !executed {
             break;
