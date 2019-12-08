@@ -1,5 +1,5 @@
 [package]
-name = "intcode1"
+name = "intcode"
 version = "0.1.0"
 authors = ["brenta"]
 edition = "2018"
