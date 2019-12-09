@@ -375,14 +375,22 @@ impl Machine {
 
     pub fn run(&mut self) -> Result<(), Error> {
         loop {
-            //println!("{:p} {:?},{:?} {:?}", self, self.ip, self.relbase, self.state);
+            // println!("{:p} {:?},{:?} {:?}", self, self.ip, self.relbase, self.state);
             //println!("  {:?}", self.memory);
             match self.state {
                 MachineState::DecodeInstruction => {
                     self.state = MachineState::ExecuteInstruction(self.pop_instruction()?);
                 }
                 MachineState::ExecuteInstruction(i) => {
-                    self.execute_instruction(i)?;
+                    match self.execute_instruction(i) {
+                        Err(e) if e == Error::Terminated => {
+                            return Ok(());
+                        },
+                        Err(e) => {
+                            return Err(e);
+                        },
+                        Ok(_) => { },
+                    }
                     self.state = MachineState::DecodeInstruction;
                 },
                 MachineState::Terminated => {

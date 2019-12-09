@@ -17,9 +17,11 @@ fn main() {
     let original: Vec<Integer> = file.split(",").map(|x| x.parse::<Integer>().unwrap()).collect();
 
     let mut machine = Machine::new(&original);
-    machine.input().send(Value(1)).unwrap();
+    machine.input().send(Value(2)).unwrap();
 
+    let start = std::time::Instant::now();
     let result = machine.run();
+    println!("Runtime is {:?}", start.elapsed());
     println!("Output is: {:?}", result);
 
     let output : Vec<Value> = machine.output().as_ref().unwrap().try_iter().collect();
