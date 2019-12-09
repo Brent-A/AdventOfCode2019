@@ -8,6 +8,10 @@ members = [
   "day/06/OrbitMap",
   "day/07/intcode3",
   "day/07/ThrustCalc",
+  
+  "day/08/ImageDecode",
+  
+  "day/09/SensorBoost",
   "lib/intcode",
 ]
 

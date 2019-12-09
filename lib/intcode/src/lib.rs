@@ -12,7 +12,7 @@ use std::convert::TryInto;
 extern crate num_derive;
 use num_traits::FromPrimitive;
 
-pub type Integer = i32;
+pub type Integer = i64;
 pub type Memory = [Integer];
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -26,12 +26,14 @@ pub struct Value(pub Integer);
 pub enum Arg {
     Address(Address),
     Value(Value),
+    Offset(Value),
 }
 
 #[derive(FromPrimitive)]
 pub enum ParameterMode {
     Position = 0,
     Immediate = 1,
+    Relative = 2,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -44,6 +46,7 @@ pub enum Instruction {
     JumpIfFalse { cond: Arg, dest: Arg },
     LessThan { c1: Arg, c2: Arg, out: Arg },
     Equals { c1: Arg, c2: Arg, out: Arg },
+    RelBaseAdjust { amount: Arg },
     Terminate,
 }
 
@@ -57,6 +60,7 @@ pub enum InstructionCode {
     JumpIfFalse = 6,
     LessThan = 7,
     Equals = 8,
+    RelBaseAdjsust = 9,
     Terminate = 99,
 }
 
@@ -81,9 +85,16 @@ enum MachineState {
     Terminated,
 }
 
+    fn usize_add(a : usize,  b: Integer) -> usize {
+        let signed : isize = a.try_into().unwrap();
+        let offset : isize = b.try_into().unwrap();
+        (signed + offset).try_into().unwrap()
+    }
 
-fn get_digits(n: i32) -> [u32; 6] {
-    let n: u32 = n.try_into().unwrap();
+
+
+fn get_digits(n: Integer) -> [Integer; 6] {
+    let n: Integer = n.try_into().unwrap();
     let a = n % 100;
     let n = n / 100;
     let b = n % 10;
@@ -95,7 +106,6 @@ fn get_digits(n: i32) -> [u32; 6] {
     let e = n % 10;
     let n = n / 10;
     let f = n % 10;
-    let n = n / 10;
     [f, e, d, c, b, a]
 }
 
@@ -103,8 +113,9 @@ use std::sync::mpsc::{Sender, Receiver, channel};
 
 #[derive(Debug)]
 pub struct Machine {
-    memory: Vec<i32>,
+    memory: Vec<Integer>,
     ip: Address,
+    relbase: Address,
     state: MachineState,
     input_tx: Sender<Value>,
     input: Receiver<Value>,
@@ -121,6 +132,7 @@ impl Machine {
         Self {
             memory: program.to_vec(),
             ip: Address(0),
+            relbase: Address(0),
             state: MachineState::DecodeInstruction,
             input: rx0,
             output: tx1,
@@ -158,6 +170,7 @@ impl Machine {
         match mode {
             ParameterMode::Position => Ok(Arg::Address(self.pop_address()?)),
             ParameterMode::Immediate => Ok(Arg::Value(self.pop_value()?)),
+            ParameterMode::Relative => Ok(Arg::Offset(self.pop_value()?))
         }
     }
 
@@ -180,9 +193,9 @@ impl Machine {
         self.ip.0 += 1;
 
         return Ok((
-            FromPrimitive::from_u32(digits[2]).ok_or(e)?,
-            FromPrimitive::from_u32(digits[3]).ok_or(e)?,
-            FromPrimitive::from_u32(digits[4]).ok_or(e)?,
+            FromPrimitive::from_i64(digits[2]).ok_or(e)?,
+            FromPrimitive::from_i64(digits[3]).ok_or(e)?,
+            FromPrimitive::from_i64(digits[4]).ok_or(e)?,
             x,
         ));
     }
@@ -224,38 +237,58 @@ impl Machine {
                 c2: self.pop_argument(a2)?,
                 out: self.pop_argument(a3)?,
             }),
+            InstructionCode::RelBaseAdjsust => Ok(Instruction::RelBaseAdjust {
+                amount: self.pop_argument(a1)?,
+            }),
             InstructionCode::Terminate => Ok(Instruction::Terminate),
         }
     }
 
     fn read_value(&self, a: Arg) -> Result<Value, Error> {
+        let read_address;
         match a {
-            Arg::Address(address) => Ok(Value(self.memory[address.0])),
-            Arg::Value(value) => Ok(value),
+            Arg::Value(value) => {
+                return Ok(value);
+            },
+            Arg::Address(address) => { read_address = address.0; },
+            
+            Arg::Offset(offset) => { read_address = usize_add(self.relbase.0, offset.0); }//Ok(Value(self.memory[address.0 + self.relbase.0]),)
+        }
+
+        if read_address >= self.memory.len() {
+            return Ok(Value(0));
+        }
+        else {
+            return Ok(Value(self.memory[read_address]));
         }
     }
 
     fn read_address(&self, address: Address) -> Result<Address, Error> {
         let m = self.memory[address.0];
         let a = Address(m.try_into().unwrap());
-        if a.0 >= self.memory.len() {
-            return Err(Error::InvalidAddress {
-                invalid_address: a,
-                address_location: address,
-            });
-        }
         Ok(a)
     }
 
     fn set_value(&mut self, arg: Arg, value: Value) -> Result<(), Error> {
+        let write_address;
         match arg {
             Arg::Address(address) => {
-                self.memory[address.0] = value.0;
-            }
-            _ => {
+                write_address = address.0;
+            },
+            Arg::Offset(offset) => {
+                write_address = usize_add(self.relbase.0, offset.0);
+            },
+            Arg::Value(_) => {
                 panic!("Invalid set value");
             }
         }
+
+        if self.memory.len() <= write_address {
+            self.memory.resize(write_address + 1, 0);
+        }
+
+        self.memory[write_address] = value.0;
+
         Ok(())
     }
 
@@ -322,7 +355,16 @@ impl Machine {
                 } else {
                     self.set_value(out, Value(0))?;
                 }
-            }
+            },
+            Instruction::RelBaseAdjust { amount } => {
+                let offset = self.read_value(amount)?.0;
+                if offset < 0 {
+                    self.relbase.0 -= (-offset) as usize;
+                }
+                else {
+                    self.relbase.0 += offset as usize;
+                }
+            },
             Instruction::Terminate => {
                 self.state = MachineState::Terminated;
                 return Err(Error::Terminated);
@@ -333,7 +375,8 @@ impl Machine {
 
     pub fn run(&mut self) -> Result<(), Error> {
         loop {
-            // println!("{:p} {:?} {:?}", self, self.ip, self.state);
+            //println!("{:p} {:?},{:?} {:?}", self, self.ip, self.relbase, self.state);
+            //println!("  {:?}", self.memory);
             match self.state {
                 MachineState::DecodeInstruction => {
                     self.state = MachineState::ExecuteInstruction(self.pop_instruction()?);
