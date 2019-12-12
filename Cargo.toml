@@ -12,6 +12,9 @@ members = [
   "day/08/ImageDecode",
   
   "day/09/SensorBoost",
+  "day/10/MonitoringStation",
+  "day/11/SpacePolice",
+  "day/12/NBody",
   "lib/intcode",
 ]
 
