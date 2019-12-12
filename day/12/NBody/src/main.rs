@@ -2,7 +2,7 @@
 type Unit = i32;
 
 
-#[derive(Debug, Copy, Clone, Hash)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct Vector3<T> {
     x: T,
     y: T,
@@ -40,8 +40,14 @@ impl<T> std::ops::Add for Vector3<T> where T : std::ops::Add<Output = T> {
         }
     }
 }
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+enum Axis {
+    X,
+    Y,
+    Z
+}
 
-#[derive(Debug, Copy, Clone, Hash)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct Moon {
     position: Vector3<Unit>,
     velocity: Vector3<Unit>,
@@ -73,7 +79,7 @@ impl Moon {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct System {
     moons: Vec<Moon>,
     steps: usize
@@ -85,6 +91,43 @@ impl System {
             moons: moons.to_vec(),
             steps: 0,
         }
+    }
+
+    fn same(&self, other: &Self, axis: Axis) -> bool {
+
+        match axis {
+            Axis::X => {
+                for i in 0..self.moons.len() {
+                    if self.moons[i].position.x != other.moons[i].position.x {
+                        return false;
+                    }
+                    if self.moons[i].velocity.x != other.moons[i].velocity.x {
+                        return false;
+                    }
+                }
+            },
+            Axis::Y => {
+                for i in 0..self.moons.len() {
+                    if self.moons[i].position.y != other.moons[i].position.y {
+                        return false;
+                    }
+                    if self.moons[i].velocity.y != other.moons[i].velocity.y {
+                        return false;
+                    }
+                }
+            },
+            Axis::Z => {
+                for i in 0..self.moons.len() {
+                    if self.moons[i].position.z != other.moons[i].position.z {
+                        return false;
+                    }
+                    if self.moons[i].velocity.z != other.moons[i].velocity.z {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     fn step(&self) -> Self {
@@ -139,7 +182,7 @@ fn main() {
         
     ]);
 /*
-    let mut system = System::new(&[
+    let system = System::new(&[
         Moon::new(&Vector3::new(-8, -10, 0)),
         Moon::new(&Vector3::new(5, 5, 10)),
         Moon::new(&Vector3::new(2, -7, 3)),
@@ -147,13 +190,48 @@ fn main() {
         
     ]);
 */
-    
-    println!("system: {:?}", system);
-    for _ in 0..1000 {
-        system = system.step();
+
+    let xrepeat;
+    let yrepeat;
+    let zrepeat;
+    println!("X:");
+    let mut next = system.clone();
+    loop {
+        next = next.step();
+        if next.same(&system, Axis::X) {
+            println!("Same: {:?} -> {:?}", system.steps, next.steps);
+            xrepeat = next.steps;
+            break;
+        }
     }
 
-    
+    println!("Y:");
+    let mut next = system.clone();
+    loop {
+        next = next.step();
+        if next.same(&system, Axis::Y) {
+            println!("Same: {:?} -> {:?}", system.steps, next.steps);
+            yrepeat = next.steps;
+            break;
+        }
+    }
+
+    println!("Z:");
+    let mut next = system.clone();
+    loop {
+        next = next.step();
+        if next.same(&system, Axis::Z) {
+            println!("Same: {:?} -> {:?}", system.steps, next.steps);
+            zrepeat = next.steps;
+            break;
+        }
+    }
+    let lcm1 = num::integer::lcm(xrepeat, yrepeat);
+    let lcm2 = num::integer::lcm(lcm1, zrepeat);
+
+    println!("total_period: {}", lcm2);
+
+    /*
     println!("system: {:?}", system);
 
     let mut energy = 0;
@@ -163,5 +241,5 @@ fn main() {
     }
 
     println!("energy: {}", energy);
-
+*/
 }
