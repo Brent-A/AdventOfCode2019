@@ -27,6 +27,22 @@ impl<T> Vector3<T> {
             z: z,
         }
     }
+
+    fn axis(&self, axis: &Axis) -> &T {
+        match axis {
+            Axis::X => &self.x,
+            Axis::Y => &self.y,
+            Axis::Z => &self.z,
+        }
+    }
+
+    fn axis_mut(&mut self, axis: &Axis) -> &mut T {
+        match axis {
+            Axis::X => &mut self.x,
+            Axis::Y => &mut self.y,
+            Axis::Z => &mut self.z,
+        }
+    }
 }
 
 impl<T> std::ops::Add for Vector3<T> where T : std::ops::Add<Output = T> {
@@ -45,6 +61,14 @@ enum Axis {
     X,
     Y,
     Z
+}
+
+impl Axis {
+    const VALUES: [Axis;3] = [Axis::X, Axis::Y, Axis::Z]; 
+
+    fn values() -> &'static [Axis] {
+        &Axis::VALUES
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -93,40 +117,17 @@ impl System {
         }
     }
 
-    fn same(&self, other: &Self, axis: Axis) -> bool {
+    fn same(&self, other: &Self, axis: &Axis) -> bool {
 
-        match axis {
-            Axis::X => {
-                for i in 0..self.moons.len() {
-                    if self.moons[i].position.x != other.moons[i].position.x {
-                        return false;
-                    }
-                    if self.moons[i].velocity.x != other.moons[i].velocity.x {
-                        return false;
-                    }
-                }
-            },
-            Axis::Y => {
-                for i in 0..self.moons.len() {
-                    if self.moons[i].position.y != other.moons[i].position.y {
-                        return false;
-                    }
-                    if self.moons[i].velocity.y != other.moons[i].velocity.y {
-                        return false;
-                    }
-                }
-            },
-            Axis::Z => {
-                for i in 0..self.moons.len() {
-                    if self.moons[i].position.z != other.moons[i].position.z {
-                        return false;
-                    }
-                    if self.moons[i].velocity.z != other.moons[i].velocity.z {
-                        return false;
-                    }
-                }
+        for i in 0..self.moons.len() {
+            if self.moons[i].position.axis(axis) != other.moons[i].position.axis(axis) {
+                return false;
+            }
+            if self.moons[i].velocity.axis(axis) != other.moons[i].velocity.axis(axis) {
+                return false;
             }
         }
+
         return true;
     }
 
@@ -134,31 +135,17 @@ impl System {
         let mut moons = self.moons.clone();
         for a in 0..moons.len() {
             for b in 0..moons.len() {
-                let mut m1 = &mut moons[a];
+                let m1 = &mut moons[a];
                 let m2 = &self.moons[b];
 
-                if m1.position.x < m2.position.x {
-                    m1.velocity.x += 1;
-                }
-                else if m1.position.x > m2.position.x {
-                    m1.velocity.x -= 1;
-                }
-
-                if m1.position.y < m2.position.y {
-                    m1.velocity.y += 1;
-                }
-                else if m1.position.y > m2.position.y {
-                    m1.velocity.y -= 1;
-                }
-
-                if m1.position.z < m2.position.z {
-                    m1.velocity.z += 1;
-                }
-                else if m1.position.z > m2.position.z {
-                    m1.velocity.z -= 1;
-                }
-
-                    
+                for axis in Axis::values() {
+                    if m1.position.axis(axis) < m2.position.axis(axis) {
+                        *m1.velocity.axis_mut(axis) += 1;
+                    }
+                    else if m1.position.axis(axis) > m2.position.axis(axis) {
+                        *m1.velocity.axis_mut(axis) -= 1;
+                    }
+                }                    
             }
         }
 
@@ -191,43 +178,22 @@ fn main() {
     ]);
 */
 
-    let xrepeat;
-    let yrepeat;
-    let zrepeat;
-    println!("X:");
-    let mut next = system.clone();
-    loop {
-        next = next.step();
-        if next.same(&system, Axis::X) {
-            println!("Same: {:?} -> {:?}", system.steps, next.steps);
-            xrepeat = next.steps;
-            break;
+    let mut periods = Vec::new();
+    for axis in Axis::values() {
+        println!("Axis: {:?}", axis);
+        let mut next = system.clone();
+        loop {
+            next = next.step();
+            if next.same(&system, axis) {
+                println!("Same: {:?} -> {:?}", system.steps, next.steps);
+                periods.push(next.steps);
+                break;
+            }
         }
     }
 
-    println!("Y:");
-    let mut next = system.clone();
-    loop {
-        next = next.step();
-        if next.same(&system, Axis::Y) {
-            println!("Same: {:?} -> {:?}", system.steps, next.steps);
-            yrepeat = next.steps;
-            break;
-        }
-    }
-
-    println!("Z:");
-    let mut next = system.clone();
-    loop {
-        next = next.step();
-        if next.same(&system, Axis::Z) {
-            println!("Same: {:?} -> {:?}", system.steps, next.steps);
-            zrepeat = next.steps;
-            break;
-        }
-    }
-    let lcm1 = num::integer::lcm(xrepeat, yrepeat);
-    let lcm2 = num::integer::lcm(lcm1, zrepeat);
+    let lcm1 = num::integer::lcm(periods[0], periods[1]);
+    let lcm2 = num::integer::lcm(lcm1, periods[2]);
 
     println!("total_period: {}", lcm2);
 
