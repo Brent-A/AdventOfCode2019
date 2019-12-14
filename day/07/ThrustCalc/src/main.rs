@@ -1,6 +1,6 @@
 use intcode::*;
 
-fn feedback_calc(input: &Memory, combo: &[i32;5]) -> Value {
+fn feedback_calc(input: &Memory, combo: &[Integer;5]) -> Value {
 
     let mut machines: Vec<Machine> = Vec::new();
 
@@ -58,10 +58,10 @@ fn feedback_calc(input: &Memory, combo: &[i32;5]) -> Value {
     outvalue
 }
 
-fn max_thrust_feedback_calc(input: &Memory) -> ([i32; 5], Value) {
-    let mut max: Option<([i32; 5], Value)> = Option::None;
+fn max_thrust_feedback_calc(input: &Memory) -> ([Integer; 5], Value) {
+    let mut max: Option<([Integer; 5], Value)> = Option::None;
 
-    let mut program: Vec<i32> = input.to_vec();
+    let mut program: Vec<Integer> = input.to_vec();
 
     program.clone_from_slice(input);
     let program = program;
@@ -120,7 +120,7 @@ fn max_thrust_feedback_calc(input: &Memory) -> ([i32; 5], Value) {
 fn main() {
     let file = std::fs::read_to_string("input.txt").unwrap();
 
-    let original: Vec<i32> = file.split(",").map(|x| x.parse::<i32>().unwrap()).collect();
+    let original: Vec<Integer> = file.split(",").map(|x| x.parse::<Integer>().unwrap()).collect();
 
     let mut program = original.clone();
 
