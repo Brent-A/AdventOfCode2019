@@ -1,5 +1,5 @@
-const BASEPATTERN : [i32; 4] = [0, 1, 0, -1];
-fn repeat_base(n: usize) -> Vec<i32> {
+const BASEPATTERN : [i8; 4] = [0, 1, 0, -1];
+fn repeat_base(n: usize) -> Vec<i8> {
     let mut v = Vec::new();
     for i in &BASEPATTERN {
         for j in 0..n {
@@ -9,17 +9,17 @@ fn repeat_base(n: usize) -> Vec<i32> {
     v
 }
 
-fn parse_signal(input: &str) -> Vec<i32> {
+fn parse_signal(input: &str) -> Vec<i8> {
     let mut v = Vec::new();
     for c in input.chars() {
         let chstr : String = c.to_string();
-        let n = chstr.parse::<i32>().unwrap();
+        let n = chstr.parse::<i8>().unwrap();
         v.push(n);
     }
     v
 }
 
-fn process_phase(signal: &Vec<i32>) -> Vec<i32> {
+fn process_phase(signal: &Vec<i8>) -> Vec<i8> {
 
     let mut v = Vec::new();
 
@@ -60,7 +60,7 @@ fn process_phase(signal: &Vec<i32>) -> Vec<i32> {
     v
 }
 
-fn process_phases(signal: &Vec<i32>, n: usize) -> Vec<i32> {
+fn process_phases(signal: &Vec<i8>, n: usize) -> Vec<i8> {
     let mut next = signal.clone();
     
     //println!("phase: _ {:?}", next);
@@ -77,69 +77,97 @@ use std::collections::HashMap;
 struct FFTSolver {
     signal_length : usize,
     repeats: usize,
-    known_digits : HashMap<(usize, usize), i32>,
+    known_digits : Vec<i8>, // addressed by: iteration * signal_length + digit
     last_stat_time: Option<std::time::Instant>,
+    solved_digits: usize,
 }
 
 impl FFTSolver {
-    fn new(signal: &[i32], repeats: usize) -> Self {
-        let mut map : HashMap<(usize, usize), i32> = HashMap::new();
+    fn new(signal: &[i8], repeats: usize) -> Self {
+        //let mut map : Vec<i8> = HashMap::new();
+        //for (i, digit) in signal.iter().enumerate() {
+        //    map.insert((0, i), *digit);
+        //}
+
+        let signal_length = signal.len() * repeats;
+        let mut mem : Vec<i8> = vec![-1; signal_length * 101];
+        
         for (i, digit) in signal.iter().enumerate() {
-            map.insert((0, i), *digit);
+            for r in 0..repeats {
+                mem[i + signal.len() * r] = *digit;
+            }
         }
+        
         Self {
             signal_length: signal.len() * repeats,
-            known_digits: map,
+            known_digits: mem,
             repeats: repeats,
             last_stat_time: None,
+            solved_digits: 0,
         }
     }
 
-    fn get_value(&mut self, iteration: usize, digit: usize) -> i32 {
-
-        let lookup;
-        if iteration == 0 {
-            lookup = (iteration, digit % (self.signal_length / self.repeats));
-        }
-        else {
-            lookup = (iteration, digit);
+    fn pre_populate(&mut self, iteration: usize, digit: usize) -> i8 {
+        if digit < self.signal_length / 2 {
+            panic!("digit too low");
         }
 
-        if let Some(v) = self.known_digits.get(&lookup) {
-            return *v;
+        for i in 1..(iteration) {
+            for d in (digit..(self.signal_length - 1)).rev() {
+                let v1 = self.get_value(i, d + 1);
+                let v2 = self.get_value(i - 1, d);
+
+                let sum = v1 + v2;
+                self.known_digits[i * self.signal_length + d] = (sum % 10).abs();
+            }
+        }
+        self.get_value(iteration, digit)
+    }
+
+    fn get_value(&mut self, iteration: usize, digit: usize) -> i8 {
+
+        let offset = iteration * self.signal_length + digit;
+
+        if self.known_digits[offset] >= 0 {
+            return self.known_digits[offset];
         }
         else {
             // pattern: [0, 1, 0, -1];
+
             
-            let sequence_len = 4 * (digit + 1);
+            let mut sum : i32 = 0;
 
-            let mut sum = 0;
-            for col in digit..self.signal_length {
-                let sequence_index = (col + 1) % sequence_len;
-                let base_sequence_index = sequence_index / (digit + 1);
-                let coeff = BASEPATTERN[base_sequence_index];
+                let sequence_len = 4 * (digit + 1);
 
-                let val;
-                if coeff == 0 {
-                    val = 0;
-                } else {
-                    val = coeff * self.get_value(iteration - 1, col);
+                for col in digit..self.signal_length {
+                    
+                    let sequence_index = (col + 1) % sequence_len;
+                    let base_sequence_index = sequence_index / (digit + 1);
+                    let coeff = BASEPATTERN[base_sequence_index] as i32;
+
+                    let val: i32;
+                    if coeff == 0 {
+                        val = 0;
+                    } else {
+                        val = coeff * (self.get_value(iteration - 1, col) as i32);
+                    }
+
+                    sum = sum + val;
                 }
-
-                sum = sum + val;
-            }
             
-            let total = (sum % 10).abs();
-            self.known_digits.insert((iteration, digit), total);
+            let total = (sum % 10).abs() as i8;
+            self.known_digits[offset] = total;
             //if iteration > 1 {
             //println!("Solved i: {}, d: {} = {} (total: {})", iteration, digit, total, self.known_digits.len());
             
             //}
+            self.solved_digits += 1;
 
             if self.last_stat_time.is_none() || self.last_stat_time.unwrap().elapsed() > std::time::Duration::from_secs(1) {
-                println!("Solved i: {}, d: {} = {} (total: {})", iteration, digit, total, self.known_digits.len());
+                println!("Solved i: {}, d: {} = {} (total: {})", iteration, digit, total, self.solved_digits);
                 self.last_stat_time = Some(std::time::Instant::now());
             }
+
             return total;
         }
     }
@@ -190,11 +218,11 @@ fn example_alt() {
 
     let mut solver = FFTSolver::new(&signal, 1);
 
-    let phase1 : Vec<i32> = (0..8).map(|x| solver.get_value(1, x)).collect();
+    let phase1 : Vec<i8> = (0..8).map(|x| solver.get_value(1, x)).collect();
     
     assert_eq!(phase1, [4, 8, 2, 2, 6, 1, 5, 8]);
     
-    let phase2 : Vec<i32>  = (0..8).map(|x| solver.get_value(2, x)).collect();
+    let phase2 : Vec<i8>  = (0..8).map(|x| solver.get_value(2, x)).collect();
     
     assert_eq!(phase2, [3, 4, 0, 4, 0, 4, 3, 8]);
 }
@@ -207,16 +235,43 @@ fn example2() {
     assert_eq!(first, [2, 4, 1, 7, 6, 1, 7, 6]);
     
     let mut solver = FFTSolver::new(&signal, 1);
-    let result :Vec<i32> = (0..8).map(|x| solver.get_value(100, x)).collect();
+    let result :Vec<i8> = (0..8).map(|x| solver.get_value(100, x)).collect();
     assert_eq!(result, [2, 4, 1, 7, 6, 1, 7, 6]);
 }
 
-fn repeat_signal(signal: &Vec<i32>, repeat: usize) -> Vec<i32> {
+fn repeat_signal(signal: &Vec<i8>, repeat: usize) -> Vec<i8> {
     let  mut v = Vec::new();
     for _ in 0..repeat {
         v.append(&mut signal.clone());
     }
     v
+}
+
+fn find_repetition<T>(set: &[T]) -> usize where T : PartialEq {
+    for period in 1..(set.len()) {
+
+        let mut periodic = true;
+        for phase in 0..period {
+            if set.len() / period <=1 {
+                periodic = false;
+                break;
+            }
+            for i in 1..(set.len() / period) {
+                if set[i * period + phase] != set[(i-1) * period + phase] {
+                    periodic = false;
+                    break;
+                }
+            }
+            if !periodic {
+                break;
+            }
+        }
+        if periodic {
+            return period;
+        }
+    }
+
+    return 0;
 }
 
 #[test]
@@ -232,31 +287,53 @@ fn repetition() {
     
     println!("");
     for x in 0..10 {
+        
+        let values : Vec<i8> = (0..100).map(|i| solver.get_value(i, last_digit - x)).collect();
+
         print!("{} from end: ", x);
-        let values : Vec<i32> = (0..100).map(|i| solver.get_value(i, last_digit - x)).collect();
-
-        let mut period = 1;
-        while (period < 100) {
-
-        }
         for i in 0..100 {
             print!("{}", solver.get_value(i, last_digit - x));
         }
-        println!("");
+        let repetition = find_repetition(&values);
+        println!(" period: {} ", repetition);
     }
+/*
+    let phase1 : Vec<i8> = (0..(signal.len() * 10)).map(|i| solver.get_value(1, i)).collect();
+    println!("phase1:");
+    let repetition = find_repetition(&phase1);
+        println!(" period: {} ", repetition);
+
+*/
+    
+    let mut solver = FFTSolver::new(&signal, 2);
+    let x = solver.get_value(20, 5);
+    println!("x = {}", x);
+
+    for y in 0..22 {
+        println!("");
+        for x in 0..(signal.len() * 2) {
+            let v = solver.known_digits[y * solver.signal_length + x];
+            if v < 0 {
+                print!("?");
+            } else {
+                print!("{}", v);
+            }
+        }
+    }
+    println!("");
 }
 
 #[test]
 fn part2_example() {
     let signal = parse_signal(&"03036732577212944063491565474664");
     let full_signal = repeat_signal(&signal, 10000);
-    let message_offset : usize = (signal[0] * 1000000 + 
-                         signal[1] *  100000 + 
-                         signal[2] *   10000 +
-                         signal[3] *    1000 +
-                         signal[4] *     100 +
-                         signal[5] *      10 +
-                         signal[6] *       1) as usize;
+    let message_offset : usize = (signal[0] as usize * 1000000 + 
+                         signal[1] as usize *  100000 + 
+                         signal[2] as usize *   10000 +
+                         signal[3] as usize *    1000 +
+                         signal[4] as usize *     100 +
+                         signal[5] as usize *      10 +
+                         signal[6] as usize *       1) as usize;
 
     let mut solver = FFTSolver::new(&signal, 10000);
 
@@ -281,7 +358,8 @@ fn part2_example() {
     println!("Solved total digits: {}", solver.known_digits.len());
 
 
-    let d1 = solver.get_value(100,  message_offset);
+
+    let d1 = solver.pre_populate(100,  message_offset);
     println!("Solved d1: {}", d1);
     println!("Solved total digits: {}", solver.known_digits.len());
 
@@ -291,7 +369,7 @@ fn part2_example() {
     println!("Solved total digits: {}", solver.known_digits.len());
     
 
-    let result :Vec<i32> = (0..8).map(|x| solver.get_value(100, x + message_offset)).collect();
+    let result :Vec<i8> = (0..8).map(|x| solver.get_value(100, x + message_offset)).collect();
 
     //let (_, rest) = r.split_at(message_offset as usize);
     //let (out, _) = rest.split_at(8);
@@ -308,13 +386,13 @@ fn main() {
     //let (first, rest) = r.split_at(8);
     //println!("result: {:?}", first);
 
-    let message_offset : usize = (signal[0] * 1000000 + 
-        signal[1] *  100000 + 
-        signal[2] *   10000 +
-        signal[3] *    1000 +
-        signal[4] *     100 +
-        signal[5] *      10 +
-        signal[6] *       1) as usize;
+    let message_offset : usize = (signal[0] as usize * 1000000 + 
+        signal[1] as usize *  100000 + 
+        signal[2] as usize *   10000 +
+        signal[3] as usize *    1000 +
+        signal[4] as usize *     100 +
+        signal[5] as usize *      10 +
+        signal[6] as usize *       1) as usize;
 
     let mut solver = FFTSolver::new(&signal, 10000);
 
@@ -324,4 +402,16 @@ fn main() {
     let from_len = total_len - message_offset;
     println!("total_message_len: {}",total_len);
     println!("distance to end: {}", from_len);
+
+    let first_digit = solver.pre_populate(100, message_offset);
+    println!("first digit: {}", first_digit);
+
+    for i in 0..8 {
+        let solved_digit = solver.get_value(100, i + message_offset);
+        
+        println!("Solved Digit {} ({}): {}", i, i+ message_offset, solved_digit);
+    }
+    let result :Vec<i8> = (0..8).map(|x| solver.get_value(100, x + message_offset)).collect();
+
+    println!("result: {:?}", result);
 }
