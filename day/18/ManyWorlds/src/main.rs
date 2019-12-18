@@ -209,7 +209,7 @@ impl MapTile {
 #[derive(Clone)]
 struct Map {
     tiles: HashMap<Point, MapTile>,
-    location: Point,
+    location: [Point;4],
     keychain: Keychain,
     traveled: i32,
 }
@@ -231,10 +231,12 @@ impl Map {
     fn new(chars: &str) -> Self {
         let mut s = Self {
             tiles: HashMap::new(),
-            location: Point::new(0, 0),
+            location: [Point::new(0, 0), Point::new(0, 0),Point::new(0, 0),Point::new(0, 0)],
             keychain: Keychain::new(),
             traveled: 0,
         };
+
+        let mut l =0;
 
         //println!("chars: {:?}", chars);
         let mut p = Point::new(0, 0);
@@ -246,7 +248,8 @@ impl Map {
                 s.tiles.insert(p, tile);
 
                 if tile == MapTile::Entrance {
-                    s.location = p;
+                    s.location[l] = p;
+                    l += 1;
                 }
             }
         }
@@ -257,7 +260,7 @@ impl Map {
         let keys = self.keys();
         let mut paths = HashMap::new();
 
-        let mut origin = Vec::new();
+        let mut origin = [Vec::new(), Vec::new(),Vec::new(), Vec::new()];
         for a in 0..keys.len() {
             let mut v = Vec::new();
             for b in 0..keys.len() {
@@ -274,19 +277,24 @@ impl Map {
                     });
                 }
             }
-            if let Some((cost, doors, pathkeys)) = self.find_path(&self.location, &keys[a].0) {
-                origin.push(Path {
-                    origin: '@',
-                    dest: keys[a].1,
-                    doors: doors,
-                    distance: cost + 1,
-                    pathkeys: pathkeys,
-                });
+            for (i, home) in ['0','1','2','3'].iter().enumerate() {
+                if let Some((cost, doors, pathkeys)) = self.find_path(&self.location[i], &keys[a].0) {
+                    origin[i].push(Path {
+                        origin: *home,
+                        dest: keys[a].1,
+                        doors: doors,
+                        distance: cost + 1,
+                        pathkeys: pathkeys,
+                    });
+                }
             }
 
             paths.insert(keys[a].1, v);
         }
-        paths.insert('@', origin);
+        
+        for (i, home) in ['0','1','2','3'].iter().enumerate() {
+            paths.insert(*home, origin[i].clone());
+        }
 
         paths
     }
@@ -315,6 +323,7 @@ impl Map {
             .collect()
     }
 
+    /*
     fn accessible_keys(&self) -> Vec<(Point, char, i32)> {
         let mut cost_map = self.get_cost_map(&self.location, true);
 
@@ -336,6 +345,7 @@ impl Map {
         //println!("next: keychain={:?}", next.keychain);
         next
     }
+*/
 
     fn keys(&self) -> Vec<(Point, char)> {
         self.tiles
@@ -505,16 +515,16 @@ fn shortest_path(map: &Map) -> Option<(Point, MapTile, i32)> {
 #[derive(Hash, Eq, PartialEq, Debug)]
 struct StateKey {
     heldkeys: String,
-    location: char,
+    location: [char; 4],
 }
 
 impl StateKey {
-    fn new(path: &Vec<char>) -> StateKey {
+    fn new(path: &Vec<char>, locations: &[char;4]) -> StateKey {
         let mut pathsorted = path.clone();
         pathsorted.sort();
         Self {
             heldkeys: pathsorted.iter().collect(),
-            location: *path.last().unwrap(),
+            location: locations.clone(),
         }
     }
 }
@@ -522,35 +532,41 @@ impl StateKey {
 #[derive(Clone, Debug)]
 struct FullPath {
     path: Vec<char>,
+    location: [char; 4],
     length: i32,
 }
 
 impl FullPath {
     fn next_steps(&self, possible_paths: &HashMap<char, Vec<Path>>) -> Vec<FullPath> {
         let mut v = Vec::new();
-        let location = self.path.last().unwrap();
-        for try_path in possible_paths.get(&location).unwrap().iter() {
-            if !self.path.contains(&try_path.dest)
-                && try_path.doors.iter().all(|x| self.path.contains(x))
-            {
-                let mut newpath = self.path.clone();
-                for p in &try_path.pathkeys {
-                    if !newpath.contains(p) {
-                        newpath.push(*p);
+        //let location = self.path.last().unwrap();
+        for (i, location) in self.location.iter().enumerate() {
+            for try_path in possible_paths.get(&location).unwrap().iter() {
+                if !self.path.contains(&try_path.dest)
+                    && try_path.doors.iter().all(|x| self.path.contains(x))
+                {
+                    let mut newpath = self.path.clone();
+                    for p in &try_path.pathkeys {
+                        if !newpath.contains(p) {
+                            newpath.push(*p);
+                        }
                     }
-                }
 
-                v.push(Self {
-                    path: newpath,
-                    length: self.length + try_path.distance,
-                });
+                    let mut newlocations = self.location.clone();
+                    newlocations[i] = *newpath.last().unwrap();
+                    v.push(Self {
+                        path: newpath,
+                        length: self.length + try_path.distance,
+                        location: newlocations,
+                    });
+                }
             }
         }
         v
     }
 
     fn state_key(&self) -> StateKey {
-        StateKey::new(&self.path)
+        StateKey::new(&self.path, &self.location)
     }
 }
 
@@ -561,7 +577,7 @@ fn print_spm(shortest_path_to_state: &ShortPathMap) {
     let mut o = Vec::new();
     for (k, v) in shortest_path_to_state.iter() {
         o.push((
-            k.heldkeys.clone() + "+" + &k.location.to_string(),
+            k.heldkeys.clone() + "+" + &k.location[0].to_string() + &k.location[1].to_string() + &k.location[2].to_string() + &k.location[3].to_string(),
             v.clone(),
         ));
         if v.path.len() > max_depth {
@@ -591,11 +607,12 @@ fn short_path(possible_paths: &HashMap<char, Vec<Path>>) -> ShortPathMap {
     paths_to_search.push(FullPath {
         path: vec!['@'],
         length: 0,
+        location: ['0', '1', '2', '3'],
     });
 
     let mut last_print = std::time::Instant::now();
 
-    while (paths_to_search.len() > 0) {
+    while paths_to_search.len() > 0 {
         let search = paths_to_search.remove(0);
 
         for next in search.next_steps(possible_paths) {
@@ -702,6 +719,15 @@ fn main() {
     //#.....@.a.B.c.d.A.e.F.g#
     //########################";
 
+    //let file = "#############
+                //#g#f.D#..h#l#
+                //#F###e#E###.#
+                //#dCba@#@BcIJ#
+                //#############
+                //#nK.L@#@G...#
+                //#M###N#H###.#
+                //#o#m..#i#jk.#
+                //#############";
     let map = Map::new(&file);
 
     map.draw();
@@ -709,7 +735,7 @@ fn main() {
     println!("keys ({}): {:?}", map.keys().len(), map.keys());
     println!("doors ({}): {:?}", map.doors().len(), map.doors());
 
-    println!("reachable keys: {:?}", map.accessible_keys());
+    //println!("reachable keys: {:?}", map.accessible_keys());
 
     let mut possible_paths = map.get_paths();
     /*
@@ -735,7 +761,32 @@ fn main() {
     println!("possible_path: {:?}", possible_paths);
     let sp = short_path(&possible_paths);
 
-    println!("path: {:?}", sp);
+    let mut max_depth = 0;
+    let mut o = Vec::new();
+    for (k, v) in sp.iter() {
+        o.push((
+            k.heldkeys.clone() + "+" + &k.location[0].to_string() + &k.location[1].to_string() + &k.location[2].to_string() + &k.location[3].to_string(),
+            v.clone(),
+            v.length,
+        ));
+        if v.path.len() > max_depth {
+            max_depth = v.path.len();
+        }
+    }
+    o.sort_by(|a, b| {
+        let c = a.0.len().partial_cmp(&b.0.len()).unwrap();
+        if c == std::cmp::Ordering::Equal {
+            a.2.partial_cmp(&b.2).unwrap()
+        } else {
+            c
+        }
+    });
+    for (k, v, l) in o {
+        println!("{:?}: {:?} {}", k, v, l);
+    }
+
+//    println!("path: {:?}", sp);
 
     // 3868 is too high
+    // 1660 not right...
 }
