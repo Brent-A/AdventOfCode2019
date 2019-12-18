@@ -161,7 +161,7 @@ impl Direction {
             'v' => Direction::South,
             '>' => Direction::East,
             _ => {
-                panic!("Invalid direction character");
+                panic!("Invalid direction character: {}", c);
             }
         }
     }
@@ -238,10 +238,6 @@ impl Map {
         s
     }
 
-    fn plot_path(&self) -> Vec<Direction> {
-
-    }
-    
 
     /*
     fn unexplored(&self) -> Vec<Point> {
@@ -491,11 +487,62 @@ impl ASCII {
         map
 
     }
+
+    fn run(&self, main: &str, A: &str, B: &str, C: &str) {
+        let mut program = self.program.clone();
+        program[0] = 2;
+        let mut machine = Machine::new(&program);
+
+        for c in main.chars() {
+            machine.input().send(Value(c as i64));
+        }
+        machine.input().send(Value(10));
+
+        
+        for c in A.chars() {
+            machine.input().send(Value(c as i64));
+        }
+        machine.input().send(Value(10));
+
+        
+        for c in B.chars() {
+            machine.input().send(Value(c as i64));
+        }
+        machine.input().send(Value(10));
+
+        
+        for c in C.chars() {
+            machine.input().send(Value(c as i64));
+        }
+        machine.input().send(Value(10));
+
+        // feed
+        machine.input().send(Value('n' as i64));
+        machine.input().send(Value(10));
+
+        machine.run().unwrap();
+
+        let output : Vec<Value> = machine.output().as_ref().unwrap().try_iter().collect();
+   
+        let chars : Vec<char> = output.iter().map(|x| std::char::from_u32(x.0.try_into().unwrap()).unwrap() ).collect();
+
+        for c in chars {
+            if c.is_ascii() {
+            print!("{}", c);
+            }
+            else {
+                println!("{}", c as i64);
+            }
+        }
+        //let map = Map::new(&chars);
+        //draw_map(&map);
+        //println!("output: {:?}", output);
+    }
 }
 
 fn main() {
 
-    let a = ASCII::new();
+    let mut a = ASCII::new();
 
     let map = a.get_map();
 
@@ -504,5 +551,13 @@ fn main() {
     let alignment : i32 = map.intersections().iter().map(|x| x.x * x.y).sum();
     println!("alignment: {}", alignment);
 
+    let A = "R,6,R,6,R,8,L,10,L,4";
+    let B = "L,4,L,12,R,6,L,10";
+    let C = "R,6,L,10,R,8";
+    let MAIN = "A,C,C,A,B,A,B,A,B,C";
+
+    a.run(&MAIN, &A, &B, &C);
+
+    
 
 }
