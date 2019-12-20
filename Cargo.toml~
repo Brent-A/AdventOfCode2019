@@ -22,7 +22,6 @@ members = [
   "day/17/ASCII",
   "day/18/ManyWorlds",
   "day/19/TractorBeam",
-  "day/20/MazeTeleport",
   "lib/intcode",
 ]
 
